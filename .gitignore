@@ -1,0 +1,6 @@
+# Default ignored files
+/config.py
+/vk_config.v2.json
+
+# Project exclude paths
+/venv/
