@@ -1,21 +1,25 @@
-import vk_audio
 import config as conf  # custom configurations
-import requests
+from pyrogram import Client
+import asyncio
 
-vk = vk_audio.VkAudio(login=conf.LOGIN, password=conf.PASSWORD)
+api_id = conf.API_ID
+api_hash = conf.API_HASH
 
-
-def find_music(text):
-    data = vk.search(text)
-    audios = data.Audios
-    # for aud in audios:
-    #     print(aud.title, " - ", aud.artist)
-    return audios
+# app = Client("music_session", api_id, api_hash, phone_number=conf.PHONE_NUMBER)
 
 
-def get_audio(lookup_id):
-    elem = vk.get_by_id(lookup_id)
-    r = requests.get(elem[0].url, allow_redirects=True)
-    with open(f'cache/{elem[0].id}', 'wb') as f:
-        f.write(r.content)
-    return [elem[0], f'cache/{elem[0].id}']
+async def find_audio(query, page=0):
+    print('start')
+    async with app:
+        messages = []
+        async for message in app.search_messages(conf.MUSIC_DATABASE_CHANNEL_ID, query=query,
+                                                 limit=conf.ELEMENTS_PER_PAGE,
+                                                 offset=page * conf.ELEMENTS_PER_PAGE):
+            messages.append(message)
+    print('ff')
+    return messages
+
+
+if __name__ == '__main__':
+    app = Client("music_session", api_id, api_hash, phone_number=conf.PHONE_NUMBER)
+    app.run(find_audio("Lion"))
