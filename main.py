@@ -1,5 +1,7 @@
 import telebot
 import asyncio
+
+import audio_handler
 import config as conf  # custom configurations
 import datetime
 import os
@@ -94,6 +96,11 @@ def callback_query(call):
             print(e)
 
 
+async def find_it():
+    audios = await user_class.app.run(user_class.find_audio("Lion"))
+    return audios
+
+
 # TODO If count of objects is equal to zero than move to 1st page
 # TODO If count of objects is less than conf.ELEMENTS_PER_PAGE => next page should be the 1st
 @bot.message_handler(content_types=["text"])
@@ -101,7 +108,8 @@ def search_music(message):
     search_message = bot.send_message(message.chat.id, "Searching...").wait()
     try:
         msg = message.text
-        audios = app.run(find_audio(message.text))
+        # audios = user_class.app.run(user_class.find_audio(message.text))
+        audios = asyncio.ensure_future(find_it())
         pages_dict[message.chat.id] = 1
         if len(audios) == 0:
             raise EmptyResponse
@@ -145,7 +153,7 @@ def set_response_markup(elements, curr_page):
             print(e)
         audio_btn = telebot.types.InlineKeyboardButton(text=elem_title, callback_data=f"{elem.owner_id}_{elem.id}")
         markup.add(audio_btn)
-    if elements == conf.ELEMENTS_PER_PAGE and curr_page == 1:
+    if len(elements) == conf.ELEMENTS_PER_PAGE and curr_page == 1:
         markup.add(
             telebot.types.InlineKeyboardButton(text="<<", callback_data="PREV_PAGE"),
             telebot.types.InlineKeyboardButton(text=f"{curr_page}", callback_data="PAGES"),
@@ -155,4 +163,6 @@ def set_response_markup(elements, curr_page):
 
 
 if __name__ == '__main__':
+    user_class = audio_handler.UserClass()
+    user_class.app.run(user_class.find_audio(query="Lion"))
     bot.polling(none_stop=True)
