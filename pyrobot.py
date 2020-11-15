@@ -1,10 +1,14 @@
 from time import time
-
-import config as conf  # custom configurations
-from pyrogram import Client, filters
-from pyrogram.types import ReplyKeyboardMarkup, InlineKeyboardMarkup, InlineKeyboardButton
 import datetime
-import asyncio
+
+import cached_audio_utils
+import config as conf  # custom configurations
+
+from pyrogram import Client, filters
+from pyrogram.types import InlineQueryResult, InlineQueryResultArticle, InputTextMessageContent, \
+    InlineKeyboardMarkup, InlineKeyboardButton, InputMessageContent
+from cached_audio import InlineQueryResultCachedDocument
+from pyrogram.raw.types import InputBotInlineResultDocument
 
 api_id = conf.API_ID
 api_hash = conf.API_HASH
@@ -19,12 +23,12 @@ class EmptyResponse(Exception):
     pass
 
 
-async def find_audio(query, chat_id, page=1):
+async def find_audio(query, chat_id, page=1, limit=conf.ELEMENTS_PER_PAGE):
     page = page - 1
     # async with app:
     messages = []
-    async for message in app.search_messages(chat_id, query=query, limit=conf.ELEMENTS_PER_PAGE,
-                                             offset=page * conf.ELEMENTS_PER_PAGE):
+    async for message in app.search_messages(chat_id, query=query, limit=limit,
+                                             offset=page * limit):
         messages.append(message)
     return messages
 
@@ -63,9 +67,133 @@ async def save_user_in_db(user):
         await bot.send_message(conf.USERS_DATABASE_CHANNEL_ID, msg)
 
 
-@bot.on_message(filters.new_chat_members & filters.left_chat_member)
-async def handle_groups(client, message):
-    pass
+# TODO see pyrogram's get_chat()
+# @bot.on_message(filters.new_chat_members & filters.left_chat_member)
+# async def handle_groups(client, message):
+#     pass
+
+
+@bot.on_message()
+async def message_info(client, message):
+    print(message)
+
+
+@bot.on_inline_query()
+async def answer(client, inline_query):
+    # results = [
+    #     InlineQueryResultCachedDocument(
+    #         title="title",
+    #         file_id='CQADAgADHxkAAsBHgUnKuMAgl2Kj4hYE',
+    #     ),
+    #     InlineQueryResultCachedDocument(
+    #         title="title",
+    #         file_id='CQADAgADnhAAAif4eUmYOR3LKoV4HxYE',
+    #     ),
+    #     # InlineQueryResultCachedDocument(
+    #     #     title="title",
+    #     #     file_id='CQADAgADnhAAAif4eUmZ3_50IxHSzxYE',
+    #     # ), KEK_DB
+    #     # InlineQueryResultCachedDocument(
+    #     #     title="title",
+    #     #     file_id='CQADAgADzBIAAif4eUkpNXJ8NbRj9RYE',
+    #     # ), YT_CHANNEL
+    # ]
+    # await inline_query.answer(
+    #     results=results,
+    #     cache_time=1,
+    # )
+    try:
+        if len(inline_query.query) == 0:
+            raise Exception
+        audios = await find_audio(query=inline_query.query, limit=3, chat_id=conf.YT_MUSIC_DATABASE_CHANNEL_ID)
+        if len(audios) == 0:
+            raise EmptyResponse
+        # audio = audios[1]
+        # results = [
+        #     # InlineQueryResultCachedDocument(
+        #     #     title=f"{audio.audio.title} - {audio.audio.performer}",
+        #     #     file_id="'CQADAgADHxkAAsBHgUnKuMAgl2Kj4hYE'",
+        #     # ),
+        #     InlineQueryResultCachedDocument(
+        #         title=f"{audio.audio.title} - {audio.audio.performer}",
+        #         file_id="'CQADAgADHxkAAsBHgUmvK1NjCllEThYE'",
+        #         # file_ref=f"{audio.audio.file_ref}",
+        #     ),
+        # ]
+        ids = []
+        for i in audios:
+            ids.append(i.message_id)
+        new_audios = await forward_audio(ids, chat_id="@kekmusic_bot", from_chat_id=conf.YT_MUSIC_DATABASE_CHANNEL_ID)
+        results = []
+        for audio in audios:
+            try:
+                new_audio = await forward_audio(m)
+                results.append(
+                    InlineQueryResultCachedDocument(
+                        title=f"{audio.audio.title} - {audio.audio.performer}",
+                        file_id=audio.audio.file_id,
+                        # file_ref=f"{audio.audio.file_ref}",
+                    ),
+                )
+            except Exception as e:
+                print(e)
+        await inline_query.answer(
+            results=results,
+            cache_time=1,
+        )
+        # results = []
+        # for audio in audios:
+        #     try:
+        #         dur = str(datetime.timedelta(seconds=audio.audio.duration))
+        #         if dur.startswith("0:"):
+        #             dur = dur[2:]
+        #     except Exception as e:
+        #         print(e)
+        #         dur = ""
+        #     results.append(
+        #         InlineQueryResultArticle(
+        #             title=f"{audio.audio.title}",
+        #             description=f"{dur}\n{audio.audio.performer}",
+        #             input_message_content=InputTextMessageContent(
+        #                 f"**{audio.audio.title} - {audio.audio.performer}**"
+        #             ),
+        #             reply_markup=InlineKeyboardMarkup(
+        #                 [
+        #                     [InlineKeyboardButton(
+        #                         "Download",
+        #                         callback_data=str(audio.message_id),
+        #                     )]
+        #                 ]
+        #             )
+        #         ))
+        # await inline_query.answer(
+        #     results=results,
+        #     cache_time=1,
+        #
+        # )
+    except EmptyResponse:
+        results = [
+            InlineQueryResultArticle(
+                title="Nothing found. Please type music artist name and music title",
+                input_message_content=InputTextMessageContent("/help"),
+            )
+        ]
+        await inline_query.answer(
+            results=results,
+            cache_time=1,
+        )
+    except Exception as e:
+        print(e)
+        results = [
+            InlineQueryResultArticle(
+                title="Please type music artist name and music title",
+                input_message_content=InputTextMessageContent("/help"),
+            )
+        ]
+        await inline_query.answer(
+            results=results,
+            cache_time=1,
+        )
 
 
 async def get_all_users_count():
@@ -129,7 +257,7 @@ async def get_today_new_users():
           f"Active: {active_users + active_groups} ({active_users}👤 {active_groups}👥)\n" \
           f"Inactive: {inactive_users + inactive_groups} ({inactive_users}👤 {inactive_groups}👥)\n" \
           f"Total: {users_count + groups_count} ({users_count}👤 {groups_count}👥)\n" \
-          f"👤 - users\n👥 - group chats\n"
+          f"👤 - users\n👥 - group chats(Work in Progress)\n"
     return msg
 
 
