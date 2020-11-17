@@ -9,15 +9,15 @@ from pyrogram.types import InlineQueryResultArticle, InputTextMessageContent, \
     InlineKeyboardMarkup, InlineKeyboardButton
 from vkaudiotoken import get_kate_token, get_vk_official_token
 
-import config as conf  # custom configurations
+# import config as conf  # custom configurations
 from pyrogram_audio import InlineQueryResultAudio
 
 # api_id = conf.API_ID
 # api_hash = conf.API_HASH
 # bot_token = conf.BOT_TOKEN
 # phone_number = conf.PHONE_NUMBER
-# login = conf.LOGIN
-# password = conf.PASSWORD
+# login = login
+# password = password
 # USERS_DATABASE_CHANNEL_ID = conf.USERS_DATABASE_CHANNEL_ID
 # YT_MUSIC_DATABASE_CHANNEL_ID = conf.YT_MUSIC_DATABASE_CHANNEL_ID
 # KEK_MUSIC_DATABASE_CHANNEL_ID = conf.KEK_MUSIC_DATABASE_CHANNEL_ID
@@ -35,7 +35,7 @@ KEK_MUSIC_DATABASE_CHANNEL_ID = int(environ["KEK_MUSIC_DATABASE_CHANNEL_ID"])
 pages_dict = {}
 
 ELEMENTS_PER_PAGE = 8
-ADMINS_IDS = [174530324]
+ADMINS_IDS = [174530324, 33908550]
 
 app = Client(":memory:", api_id, api_hash, phone_number=phone_number)
 bot = Client(":memory:", api_id, api_hash, bot_token=bot_token)
@@ -59,7 +59,7 @@ async def find_audio(query, chat_id, page=1, limit=ELEMENTS_PER_PAGE):
 
 def search_vk_audio(query: str, page=1, limit=ELEMENTS_PER_PAGE, performer_only: int = 0):
     try:
-        client = get_vk_official_token(conf.LOGIN, conf.PASSWORD)
+        client = get_vk_official_token(login, password)
         token = client['token']
         print(token)
         user_agent = client['user_agent']
@@ -83,7 +83,7 @@ def search_vk_audio(query: str, page=1, limit=ELEMENTS_PER_PAGE, performer_only:
     except Exception as e:
         print(e)
 
-        client = get_kate_token(conf.LOGIN, conf.PASSWORD)
+        client = get_kate_token(login, password)
         token = client['token']
         user_agent = client['user_agent']
 
@@ -108,7 +108,7 @@ def search_vk_audio(query: str, page=1, limit=ELEMENTS_PER_PAGE, performer_only:
 
 
 def popular_vk_audio(page=1, limit=ELEMENTS_PER_PAGE):
-    client = get_vk_official_token(conf.LOGIN, conf.PASSWORD)
+    client = get_vk_official_token(login, password)
     token = client['token']
     user_agent = client['user_agent']
 
