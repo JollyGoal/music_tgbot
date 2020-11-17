@@ -12,26 +12,29 @@ from vkaudiotoken import get_kate_token, get_vk_official_token
 import config as conf  # custom configurations
 from pyrogram_audio import InlineQueryResultAudio
 
-# api_id = conf.API_ID
-# api_hash = conf.API_HASH
-# bot_token = conf.BOT_TOKEN
-# phone_number = conf.PHONE_NUMBER
-# login = conf.LOGIN
-# password = conf.PASSWORD
+api_id = conf.API_ID
+api_hash = conf.API_HASH
+bot_token = conf.BOT_TOKEN
+phone_number = conf.PHONE_NUMBER
+login = conf.LOGIN
+password = conf.PASSWORD
+USERS_DATABASE_CHANNEL_ID = conf.USERS_DATABASE_CHANNEL_ID
+YT_MUSIC_DATABASE_CHANNEL_ID = conf.YT_MUSIC_DATABASE_CHANNEL_ID
+KEK_MUSIC_DATABASE_CHANNEL_ID = conf.KEK_MUSIC_DATABASE_CHANNEL_ID
 
-api_id = int(environ["API_ID"])
-api_hash = environ["API_HASH"]
-bot_token = environ["BOT_TOKEN"]
-phone_number = environ["PHONE_NUMBER"]
-login = environ["LOGIN"]
-password = environ["PASSWORD"]
+# api_id = int(environ["API_ID"])
+# api_hash = environ["API_HASH"]
+# bot_token = environ["BOT_TOKEN"]
+# phone_number = environ["PHONE_NUMBER"]
+# login = environ["LOGIN"]
+# password = environ["PASSWORD"]
+# USERS_DATABASE_CHANNEL_ID = int(environ["USERS_DATABASE_CHANNEL_ID"])
+# YT_MUSIC_DATABASE_CHANNEL_ID = int(environ["YT_MUSIC_DATABASE_CHANNEL_ID"])
+# KEK_MUSIC_DATABASE_CHANNEL_ID = int(environ["KEK_MUSIC_DATABASE_CHANNEL_ID"])
 
 pages_dict = {}
 
 ELEMENTS_PER_PAGE = 8
-USERS_DATABASE_CHANNEL_ID = int(environ["USERS_DATABASE_CHANNEL_ID"])
-YT_MUSIC_DATABASE_CHANNEL_ID = int(environ["YT_MUSIC_DATABASE_CHANNEL_ID"])
-KEK_MUSIC_DATABASE_CHANNEL_ID = int(environ["KEK_MUSIC_DATABASE_CHANNEL_ID"])
 ADMINS_IDS = [174530324]
 
 app = Client("music_session", api_id, api_hash, phone_number=phone_number)
@@ -193,7 +196,7 @@ async def answer(client, inline_query):
                         duration=int(audio['duration']),
                         performer=audio['artist'],
                         description=audio['artist'],
-                        caption="[KeK Music](t.me/kekmusic_bot)",
+                        caption="[𝑺𝒂𝒍𝒗𝒂𝒕𝒐𝒓𝒆𝑴𝒖𝒛](https://t.me/salvatoremuzbot)🥀",
                     ),
                 )
             except Exception as e:
@@ -233,7 +236,7 @@ async def answer(client, inline_query):
         #                 duration=int(audio['duration']),
         #                 performer=audio['artist'],
         #                 description=audio['artist'],
-        #                 caption="[KeK Music](t.me/kekmusic_bot)",
+        #                 caption="[𝑺𝒂𝒍𝒗𝒂𝒕𝒐𝒓𝒆𝑴𝒖𝒛](https://t.me/salvatoremuzbot)🥀",
         #             ),
         #         )
         #     except Exception as e:
@@ -328,7 +331,7 @@ async def welcome(client, message):
                                  f' I can find any music you want\nJust send me the search query')
     else:
         await message.reply_text("Send me a search query, or mention me in any chat you want,"
-                                 " in the following form: @kekmusic_bot Artist name - Song title")
+                                 " in the following form: @salvatoremuzbot Artist name - Song title")
 
 
 @bot.on_callback_query()
@@ -378,7 +381,8 @@ async def answer(client, callback_query):
                 message_ids=msg.message_id,
                 as_copy=True,
             )
-            await client.edit_message_caption(final_msg.chat.id, final_msg.message_id, "[KeK Music](t.me/kekmusic_bot)")
+            await client.edit_message_caption(final_msg.chat.id, final_msg.message_id,
+                                              "[𝑺𝒂𝒍𝒗𝒂𝒕𝒐𝒓𝒆𝑴𝒖𝒛](https://t.me/salvatoremuzbot)🥀")
             await callback_query.answer()
         else:
             await callback_query.answer("⛔ Something went wrong")
