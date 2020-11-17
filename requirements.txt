@@ -1,0 +1,4 @@
+Pyrogram==1.0.7
+vk-api==11.9.0
+vk-audio==6.9
+vkaudiotoken==0.5.1

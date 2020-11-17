@@ -3,7 +3,13 @@
   "description": "A Pyrogram bot, which can help surfing music databases",
   "repository": "https://github.com/JollyGoal/music_tgbot",
   "logo": "https://avatars1.githubusercontent.com/u/34474300?s=280&v=4",
-  "keywords": ["python", "pyrogram", "telegram", "userbot", "kekmusic"],
+  "keywords": [
+    "python",
+    "pyrogram",
+    "telegram",
+    "userbot",
+    "kekmusic"
+  ],
   "image": "heroku/python",
   "formation": {
     "worker": {
