@@ -1,11 +1,12 @@
 import asyncio
 
+import soundcloud
+
 import config as conf  # custom configurations
 from pyrogram import Client
 import requests
 import vk_audio
 from vkaudiotoken import get_kate_token, get_vk_official_token
-
 
 api_id = conf.API_ID
 api_hash = conf.API_HASH
@@ -55,6 +56,13 @@ async def search_vk_audio(query: str):
     print(js)
 
 
+def search_sundcloud():
+    client = soundcloud.Client(client_id="2876adf40e30f73eb3cfe0af77f3a77d")
+    tracks = client.get('/tracks', limit=10)
+    for track in tracks.collection:
+        print(track.title)
+
+
 def vk_audio_search():
     vk = vk_audio.VkAudio(login=conf.LOGIN, password=conf.PASSWORD)
     data = vk.search("burn")
@@ -62,10 +70,9 @@ def vk_audio_search():
     print(audio)
 
 
-
-
 if __name__ == '__main__':
-    asyncio.run(search_vk_audio("Lion"))
+    search_sundcloud()
+    # asyncio.run(search_vk_audio("Lion"))
     # vk_audio_search()
 #     user_class = UserClass()
 #     user_class.app.run(user_class.find_audio(query="Lion"))
