@@ -37,8 +37,8 @@ pages_dict = {}
 ELEMENTS_PER_PAGE = 8
 ADMINS_IDS = [174530324, 33908550]
 
-app = Client(":memory:", api_id, api_hash, phone_number=phone_number)
-bot = Client(":memory:", api_id, api_hash, bot_token=bot_token)
+app = Client("app", api_id, api_hash, phone_number=phone_number)
+bot = Client("bot", api_id, api_hash, bot_token=bot_token)
 
 _pattern = re.compile(r'/[a-zA-Z\d]{6,}(/.*?[a-zA-Z\d]+?)/index.m3u8()')
 
