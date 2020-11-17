@@ -1,14 +1,15 @@
-from time import time
 import datetime
+import re
+from time import time
 
-import cached_audio_utils
-import config as conf  # custom configurations
-
+import requests
 from pyrogram import Client, filters
-from pyrogram.types import InlineQueryResult, InlineQueryResultArticle, InputTextMessageContent, \
-    InlineKeyboardMarkup, InlineKeyboardButton, InputMessageContent
-from cached_audio import InlineQueryResultCachedDocument
-from pyrogram.raw.types import InputBotInlineResultDocument
+from pyrogram.types import InlineQueryResultArticle, InputTextMessageContent, \
+    InlineKeyboardMarkup, InlineKeyboardButton
+from vkaudiotoken import get_kate_token, get_vk_official_token
+
+import config as conf  # custom configurations
+from pyrogram_audio import InlineQueryResultAudio
 
 api_id = conf.API_ID
 api_hash = conf.API_HASH
@@ -17,6 +18,8 @@ pages_dict = {}
 
 app = Client("music_session", api_id, api_hash, phone_number=conf.PHONE_NUMBER)
 bot = Client("bot_session", api_id, api_hash, bot_token=conf.BOT_TOKEN)
+
+_pattern = re.compile(r'/[a-zA-Z\d]{6,}(/.*?[a-zA-Z\d]+?)/index.m3u8()')
 
 
 class EmptyResponse(Exception):
@@ -31,6 +34,78 @@ async def find_audio(query, chat_id, page=1, limit=conf.ELEMENTS_PER_PAGE):
                                              offset=page * limit):
         messages.append(message)
     return messages
+
+
+def search_vk_audio(query: str, page=1, limit=conf.ELEMENTS_PER_PAGE, performer_only: int = 0):
+    try:
+        client = get_vk_official_token(conf.LOGIN, conf.PASSWORD)
+        token = client['token']
+        print(token)
+        user_agent = client['user_agent']
+
+        sess = requests.session()
+        sess.headers.update({'User-Agent': user_agent})
+
+        page = page - 1
+
+        result = sess.get(
+            "https://api.vk.com/method/audio.search",
+            params=[
+                ('access_token', token),
+                ('v', '5.95'),
+                ('q', query),
+                ('performer_only', performer_only),
+                ('offset', page * limit),
+                ('count', limit)
+            ]
+        )
+    except Exception as e:
+        print(e)
+
+        client = get_kate_token(conf.LOGIN, conf.PASSWORD)
+        token = client['token']
+        user_agent = client['user_agent']
+
+        sess = requests.session()
+        sess.headers.update({'User-Agent': user_agent})
+
+        page = page - 1
+
+        result = sess.get(
+            "https://api.vk.com/method/audio.search",
+            params=[
+                ('access_token', token),
+                ('v', '5.95'),
+                ('q', query),
+                ('performer_only', performer_only),
+                ('offset', page * limit),
+                ('count', limit)
+            ]
+        )
+    js = result.json()
+    return result.json()['response']
+
+
+def popular_vk_audio(page=1, limit=conf.ELEMENTS_PER_PAGE):
+    client = get_vk_official_token(conf.LOGIN, conf.PASSWORD)
+    token = client['token']
+    user_agent = client['user_agent']
+
+    sess = requests.session()
+    sess.headers.update({'User-Agent': user_agent})
+
+    page = page - 1
+
+    result = sess.get(
+        "https://api.vk.com/method/audio.getPopular",
+        params=[
+            ('access_token', token),
+            ('v', '5.95'),
+            ('offset', page * limit),
+            ('count', limit)
+        ]
+    )
+    return result.json()['response']
 
 
 async def forward_audio(message_ids, chat_id, from_chat_id):
@@ -73,66 +148,34 @@ async def save_user_in_db(user):
 #     pass
 
 
-@bot.on_message()
-async def message_info(client, message):
-    print(message)
+# @bot.on_message()
+# async def message_info(client, message):
+#     print(message)
 
 
 @bot.on_inline_query()
 async def answer(client, inline_query):
-    # results = [
-    #     InlineQueryResultCachedDocument(
-    #         title="title",
-    #         file_id='CQADAgADHxkAAsBHgUnKuMAgl2Kj4hYE',
-    #     ),
-    #     InlineQueryResultCachedDocument(
-    #         title="title",
-    #         file_id='CQADAgADnhAAAif4eUmYOR3LKoV4HxYE',
-    #     ),
-    #     # InlineQueryResultCachedDocument(
-    #     #     title="title",
-    #     #     file_id='CQADAgADnhAAAif4eUmZ3_50IxHSzxYE',
-    #     # ), KEK_DB
-    #     # InlineQueryResultCachedDocument(
-    #     #     title="title",
-    #     #     file_id='CQADAgADzBIAAif4eUkpNXJ8NbRj9RYE',
-    #     # ), YT_CHANNEL
-    # ]
-    # await inline_query.answer(
-    #     results=results,
-    #     cache_time=1,
-    # )
     try:
         if len(inline_query.query) == 0:
             raise Exception
-        audios = await find_audio(query=inline_query.query, limit=3, chat_id=conf.YT_MUSIC_DATABASE_CHANNEL_ID)
+        response = search_vk_audio(query=inline_query.query, limit=10)
+        audios = response['items']
         if len(audios) == 0:
             raise EmptyResponse
-        # audio = audios[1]
-        # results = [
-        #     # InlineQueryResultCachedDocument(
-        #     #     title=f"{audio.audio.title} - {audio.audio.performer}",
-        #     #     file_id="'CQADAgADHxkAAsBHgUnKuMAgl2Kj4hYE'",
-        #     # ),
-        #     InlineQueryResultCachedDocument(
-        #         title=f"{audio.audio.title} - {audio.audio.performer}",
-        #         file_id="'CQADAgADHxkAAsBHgUmvK1NjCllEThYE'",
-        #         # file_ref=f"{audio.audio.file_ref}",
-        #     ),
-        # ]
-        ids = []
-        for i in audios:
-            ids.append(i.message_id)
-        new_audios = await forward_audio(ids, chat_id="@kekmusic_bot", from_chat_id=conf.YT_MUSIC_DATABASE_CHANNEL_ID)
         results = []
         for audio in audios:
             try:
-                new_audio = await forward_audio(m)
+                print(audio['url'])
+                url = _pattern.sub(r'\1\2.mp3', audio['url'])
                 results.append(
-                    InlineQueryResultCachedDocument(
-                        title=f"{audio.audio.title} - {audio.audio.performer}",
-                        file_id=audio.audio.file_id,
-                        # file_ref=f"{audio.audio.file_ref}",
+                    InlineQueryResultAudio(
+                        title=audio['title'],
+                        audio_url=url,
+                        voice=False,
+                        duration=int(audio['duration']),
+                        performer=audio['artist'],
+                        description=audio['artist'],
+                        caption="[KeK Music](t.me/kekmusic_bot)",
                     ),
                 )
             except Exception as e:
@@ -141,36 +184,6 @@ async def answer(client, inline_query):
             results=results,
             cache_time=1,
         )
-        # results = []
-        # for audio in audios:
-        #     try:
-        #         dur = str(datetime.timedelta(seconds=audio.audio.duration))
-        #         if dur.startswith("0:"):
-        #             dur = dur[2:]
-        #     except Exception as e:
-        #         print(e)
-        #         dur = ""
-        #     results.append(
-        #         InlineQueryResultArticle(
-        #             title=f"{audio.audio.title}",
-        #             description=f"{dur}\n{audio.audio.performer}",
-        #             input_message_content=InputTextMessageContent(
-        #                 f"**{audio.audio.title} - {audio.audio.performer}**"
-        #             ),
-        #             reply_markup=InlineKeyboardMarkup(
-        #                 [
-        #                     [InlineKeyboardButton(
-        #                         "Download",
-        #                         callback_data=str(audio.message_id),
-        #                     )]
-        #                 ]
-        #             )
-        #         ))
-        # await inline_query.answer(
-        #     results=results,
-        #     cache_time=1,
-        #
-        # )
     except EmptyResponse:
         results = [
             InlineQueryResultArticle(
@@ -190,9 +203,26 @@ async def answer(client, inline_query):
                 input_message_content=InputTextMessageContent("/help"),
             )
         ]
+        # audios = popular_vk_audio(limit=10)
+        # for audio in audios:
+        #     try:
+        #         url = _pattern.sub(r'\1\2.mp3', audio['url'])
+        #         results.append(
+        #             InlineQueryResultAudio(
+        #                 title=audio['title'],
+        #                 audio_url=url,
+        #                 voice=False,
+        #                 duration=int(audio['duration']),
+        #                 performer=audio['artist'],
+        #                 description=audio['artist'],
+        #                 caption="[KeK Music](t.me/kekmusic_bot)",
+        #             ),
+        #         )
+        #     except Exception as e:
+        #         print(e)
         await inline_query.answer(
             results=results,
-            cache_time=1,
+            cache_time=1,  # TODO
         )
 
 
