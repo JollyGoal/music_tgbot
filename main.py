@@ -12,33 +12,33 @@ from vkaudiotoken import get_kate_token, get_vk_official_token
 import config as conf  # custom configurations
 from pyrogram_audio import InlineQueryResultAudio
 
-api_id = conf.API_ID
-api_hash = conf.API_HASH
-bot_token = conf.BOT_TOKEN
-phone_number = conf.PHONE_NUMBER
-login = conf.LOGIN
-password = conf.PASSWORD
-USERS_DATABASE_CHANNEL_ID = conf.USERS_DATABASE_CHANNEL_ID
-YT_MUSIC_DATABASE_CHANNEL_ID = conf.YT_MUSIC_DATABASE_CHANNEL_ID
-KEK_MUSIC_DATABASE_CHANNEL_ID = conf.KEK_MUSIC_DATABASE_CHANNEL_ID
+# api_id = conf.API_ID
+# api_hash = conf.API_HASH
+# bot_token = conf.BOT_TOKEN
+# phone_number = conf.PHONE_NUMBER
+# login = conf.LOGIN
+# password = conf.PASSWORD
+# USERS_DATABASE_CHANNEL_ID = conf.USERS_DATABASE_CHANNEL_ID
+# YT_MUSIC_DATABASE_CHANNEL_ID = conf.YT_MUSIC_DATABASE_CHANNEL_ID
+# KEK_MUSIC_DATABASE_CHANNEL_ID = conf.KEK_MUSIC_DATABASE_CHANNEL_ID
 
-# api_id = int(environ["API_ID"])
-# api_hash = environ["API_HASH"]
-# bot_token = environ["BOT_TOKEN"]
-# phone_number = environ["PHONE_NUMBER"]
-# login = environ["LOGIN"]
-# password = environ["PASSWORD"]
-# USERS_DATABASE_CHANNEL_ID = int(environ["USERS_DATABASE_CHANNEL_ID"])
-# YT_MUSIC_DATABASE_CHANNEL_ID = int(environ["YT_MUSIC_DATABASE_CHANNEL_ID"])
-# KEK_MUSIC_DATABASE_CHANNEL_ID = int(environ["KEK_MUSIC_DATABASE_CHANNEL_ID"])
+api_id = int(environ["API_ID"])
+api_hash = environ["API_HASH"]
+bot_token = environ["BOT_TOKEN"]
+phone_number = environ["PHONE_NUMBER"]
+login = environ["LOGIN"]
+password = environ["PASSWORD"]
+USERS_DATABASE_CHANNEL_ID = int(environ["USERS_DATABASE_CHANNEL_ID"])
+YT_MUSIC_DATABASE_CHANNEL_ID = int(environ["YT_MUSIC_DATABASE_CHANNEL_ID"])
+KEK_MUSIC_DATABASE_CHANNEL_ID = int(environ["KEK_MUSIC_DATABASE_CHANNEL_ID"])
 
 pages_dict = {}
 
 ELEMENTS_PER_PAGE = 8
 ADMINS_IDS = [174530324]
 
-app = Client("music_session", api_id, api_hash, phone_number=phone_number)
-bot = Client("bot_session", api_id, api_hash, bot_token=bot_token)
+app = Client(":memory:", api_id, api_hash, phone_number=phone_number)
+bot = Client(":memory:", api_id, api_hash, bot_token=bot_token)
 
 _pattern = re.compile(r'/[a-zA-Z\d]{6,}(/.*?[a-zA-Z\d]+?)/index.m3u8()')
 
@@ -144,8 +144,11 @@ async def save_user_in_db(user):
     users_data = []
     async for message in app.search_messages(USERS_DATABASE_CHANNEL_ID, query=f"{user.id}",
                                              limit=999):
-        if message.message_id != 25 and message.text.startswith(f"ID: {user.id}"):
-            users_data.append(message)
+        try:
+            if message.text.startswith(f"ID: {user.id}"):
+                users_data.append(message)
+        except Exception as e:
+            print(e)
     msg = f"ID: {user.id}\nIs bot?: {user.is_bot}\nFirst name: {user.first_name}" \
           f"\nLast name: {user.last_name}\nUsername: @{user.username}\nIs active: True"
     if len(users_data) == 0:
