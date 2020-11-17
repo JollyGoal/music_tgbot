@@ -1,0 +1,43 @@
+{
+  "name": "KeK Music Bot",
+  "description": "A Pyrogram bot, which can help surfing music databases",
+  "repository": "https://github.com/JollyGoal/music_tgbot",
+  "logo": "https://avatars1.githubusercontent.com/u/34474300?s=280&v=4",
+  "keywords": ["python", "pyrogram", "telegram", "userbot", "kekmusic"],
+  "image": "heroku/python",
+  "formation": {
+    "worker": {
+      "quantity": 1,
+      "size": "free"
+    }
+  },
+  "env": {
+    "API_ID": {
+      "description": "App api_id from https://my.telegram.org"
+    },
+    "API_HASH": {
+      "description": "App api_hash from https://my.telegram.org"
+    },
+    "BOT_TOKEN": {
+      "description": "Bot token from https://t.me/BotFather"
+    },
+    "PHONE_NUMBER": {
+      "description": "Phone number of a user-bot"
+    },
+    "LOGIN": {
+      "description": "VK LOGIN"
+    },
+    "PASSWORD": {
+      "description": "VK Password"
+    },
+    "USERS_DATABASE_CHANNEL_ID": {
+      "description": "USERS_DATABASE_CHANNEL_ID"
+    },
+    "YT_MUSIC_DATABASE_CHANNEL_ID": {
+      "description": "YT_MUSIC_DATABASE_CHANNEL_ID"
+    },
+    "KEK_MUSIC_DATABASE_CHANNEL_ID": {
+      "description": "KEK_MUSIC_DATABASE_CHANNEL_ID"
+    }
+  }
+}

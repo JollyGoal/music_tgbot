@@ -1,6 +1,7 @@
 import datetime
 import re
 from time import time
+from os import environ
 
 import requests
 from pyrogram import Client, filters
@@ -11,13 +12,30 @@ from vkaudiotoken import get_kate_token, get_vk_official_token
 import config as conf  # custom configurations
 from pyrogram_audio import InlineQueryResultAudio
 
-api_id = conf.API_ID
-api_hash = conf.API_HASH
+# api_id = conf.API_ID
+# api_hash = conf.API_HASH
+# bot_token = conf.BOT_TOKEN
+# phone_number = conf.PHONE_NUMBER
+# login = conf.LOGIN
+# password = conf.PASSWORD
+
+api_id = int(environ["API_ID"])
+api_hash = environ["API_HASH"]
+bot_token = environ["BOT_TOKEN"]
+phone_number = environ["PHONE_NUMBER"]
+login = environ["LOGIN"]
+password = environ["PASSWORD"]
 
 pages_dict = {}
 
-app = Client("music_session", api_id, api_hash, phone_number=conf.PHONE_NUMBER)
-bot = Client("bot_session", api_id, api_hash, bot_token=conf.BOT_TOKEN)
+ELEMENTS_PER_PAGE = 8
+USERS_DATABASE_CHANNEL_ID = environ["USERS_DATABASE_CHANNEL_ID"]
+YT_MUSIC_DATABASE_CHANNEL_ID = environ["YT_MUSIC_DATABASE_CHANNEL_ID"]
+KEK_MUSIC_DATABASE_CHANNEL_ID = environ["KEK_MUSIC_DATABASE_CHANNEL_ID"]
+ADMINS_IDS = [174530324]
+
+app = Client("music_session", api_id, api_hash, phone_number=phone_number)
+bot = Client("bot_session", api_id, api_hash, bot_token=bot_token)
 
 _pattern = re.compile(r'/[a-zA-Z\d]{6,}(/.*?[a-zA-Z\d]+?)/index.m3u8()')
 
@@ -26,7 +44,7 @@ class EmptyResponse(Exception):
     pass
 
 
-async def find_audio(query, chat_id, page=1, limit=conf.ELEMENTS_PER_PAGE):
+async def find_audio(query, chat_id, page=1, limit=ELEMENTS_PER_PAGE):
     page = page - 1
     # async with app:
     messages = []
@@ -36,7 +54,7 @@ async def find_audio(query, chat_id, page=1, limit=conf.ELEMENTS_PER_PAGE):
     return messages
 
 
-def search_vk_audio(query: str, page=1, limit=conf.ELEMENTS_PER_PAGE, performer_only: int = 0):
+def search_vk_audio(query: str, page=1, limit=ELEMENTS_PER_PAGE, performer_only: int = 0):
     try:
         client = get_vk_official_token(conf.LOGIN, conf.PASSWORD)
         token = client['token']
@@ -86,7 +104,7 @@ def search_vk_audio(query: str, page=1, limit=conf.ELEMENTS_PER_PAGE, performer_
     return result.json()['response']
 
 
-def popular_vk_audio(page=1, limit=conf.ELEMENTS_PER_PAGE):
+def popular_vk_audio(page=1, limit=ELEMENTS_PER_PAGE):
     client = get_vk_official_token(conf.LOGIN, conf.PASSWORD)
     token = client['token']
     user_agent = client['user_agent']
@@ -121,14 +139,14 @@ async def forward_audio(message_ids, chat_id, from_chat_id):
 
 async def save_user_in_db(user):
     users_data = []
-    async for message in app.search_messages(conf.USERS_DATABASE_CHANNEL_ID, query=f"{user.id}",
+    async for message in app.search_messages(USERS_DATABASE_CHANNEL_ID, query=f"{user.id}",
                                              limit=999):
         if message.message_id != 25 and message.text.startswith(f"ID: {user.id}"):
             users_data.append(message)
     msg = f"ID: {user.id}\nIs bot?: {user.is_bot}\nFirst name: {user.first_name}" \
           f"\nLast name: {user.last_name}\nUsername: @{user.username}\nIs active: True"
     if len(users_data) == 0:
-        await bot.send_message(conf.USERS_DATABASE_CHANNEL_ID, msg)
+        await bot.send_message(USERS_DATABASE_CHANNEL_ID, msg)
     elif len(users_data) == 1:
         try:
             await users_data[0].edit_text(msg)
@@ -139,7 +157,7 @@ async def save_user_in_db(user):
     else:
         for single_user_data in users_data:
             await single_user_data.delete()
-        await bot.send_message(conf.USERS_DATABASE_CHANNEL_ID, msg)
+        await bot.send_message(USERS_DATABASE_CHANNEL_ID, msg)
 
 
 # TODO see pyrogram's get_chat()
@@ -234,7 +252,7 @@ async def get_all_users_count():
     active_groups = 0
     inactive_groups = 0
 
-    async for message in app.iter_history(conf.USERS_DATABASE_CHANNEL_ID):
+    async for message in app.iter_history(USERS_DATABASE_CHANNEL_ID):
         try:
             if message.text.startswith("ID: "):
                 users_count += 1
@@ -265,7 +283,7 @@ async def get_today_new_users():
     active_groups = 0
     inactive_groups = 0
 
-    async for message in app.iter_history(conf.USERS_DATABASE_CHANNEL_ID):
+    async for message in app.iter_history(USERS_DATABASE_CHANNEL_ID):
         if time() - message.date >= 86400:
             break
         try:
@@ -292,7 +310,7 @@ async def get_today_new_users():
 
 
 @bot.on_message(
-    filters.command(commands=["today_new_users", "send_ad", "all_users_count"]) & filters.chat(chats=conf.ADMINS_IDS))
+    filters.command(commands=["today_new_users", "send_ad", "all_users_count"]) & filters.chat(chats=ADMINS_IDS))
 async def handle_admins_messages(client, message):
     if message.text.lower() == "/all_users_count":
         stats = await get_all_users_count()
@@ -326,13 +344,13 @@ async def answer(client, callback_query):
             except Exception as e:
                 print(e)
                 pages_dict[callback_query.message.chat.id] = 1
-            audios = await find_audio(callback_query.message.text, conf.YT_MUSIC_DATABASE_CHANNEL_ID,
+            audios = await find_audio(callback_query.message.text, YT_MUSIC_DATABASE_CHANNEL_ID,
                                       page=pages_dict[callback_query.message.chat.id])
             await callback_query.message.edit_reply_markup(audios_markup(audios,
                                                                          pages_dict[callback_query.message.chat.id]))
         elif callback_query.data == "NEXT_PAGE":
             try:
-                if len(callback_query.message.reply_markup.inline_keyboard) != conf.ELEMENTS_PER_PAGE + 1:
+                if len(callback_query.message.reply_markup.inline_keyboard) != ELEMENTS_PER_PAGE + 1:
                     await callback_query.answer("⛔ No way further")
                     return
                 else:
@@ -340,7 +358,7 @@ async def answer(client, callback_query):
             except Exception as e:
                 print(e)
                 pages_dict[callback_query.message.chat.id] = 1
-            audios = await find_audio(callback_query.message.text, conf.YT_MUSIC_DATABASE_CHANNEL_ID,
+            audios = await find_audio(callback_query.message.text, YT_MUSIC_DATABASE_CHANNEL_ID,
                                       page=pages_dict[callback_query.message.chat.id])
             if len(audios) == 0:
                 pages_dict[callback_query.message.chat.id] -= 1
@@ -352,11 +370,11 @@ async def answer(client, callback_query):
         elif callback_query.data == "PAGES":
             await callback_query.answer()
         elif callback_query.data.isdigit():
-            msg = await forward_audio(int(callback_query.data), conf.KEK_MUSIC_DATABASE_CHANNEL_ID,
-                                      conf.YT_MUSIC_DATABASE_CHANNEL_ID)
+            msg = await forward_audio(int(callback_query.data), KEK_MUSIC_DATABASE_CHANNEL_ID,
+                                      YT_MUSIC_DATABASE_CHANNEL_ID)
             final_msg = await client.forward_messages(
                 chat_id=callback_query.message.chat.id,
-                from_chat_id=conf.KEK_MUSIC_DATABASE_CHANNEL_ID,
+                from_chat_id=KEK_MUSIC_DATABASE_CHANNEL_ID,
                 message_ids=msg.message_id,
                 as_copy=True,
             )
@@ -373,7 +391,7 @@ async def answer(client, callback_query):
 async def echo(client, message):
     search_message = await client.send_message(message.chat.id, "Searching...")
     try:
-        audios = await find_audio(message.text, conf.YT_MUSIC_DATABASE_CHANNEL_ID)
+        audios = await find_audio(message.text, YT_MUSIC_DATABASE_CHANNEL_ID)
         if len(audios) == 0:
             raise EmptyResponse
         pages_dict[message.chat.id] = 1
@@ -401,14 +419,14 @@ def audios_markup(audios, curr_page):
             print(e)
         keyboard.append([InlineKeyboardButton(text=elem_title, callback_data=str(audio.message_id))])
 
-    if len(audios) == conf.ELEMENTS_PER_PAGE:
+    if len(audios) == ELEMENTS_PER_PAGE:
         controls = []
         if curr_page != 1:
             controls.append(InlineKeyboardButton(text="<<", callback_data="PREV_PAGE"))
         controls += [InlineKeyboardButton(text=f"{curr_page}", callback_data="PAGES"),
                      InlineKeyboardButton(text=">>", callback_data="NEXT_PAGE"), ]
         keyboard.append(controls)
-    elif len(audios) != conf.ELEMENTS_PER_PAGE and curr_page != 1:
+    elif len(audios) != ELEMENTS_PER_PAGE and curr_page != 1:
         controls = [InlineKeyboardButton(text="<<", callback_data="PREV_PAGE"),
                     InlineKeyboardButton(text=f"{curr_page}", callback_data="PAGES")]
         keyboard.append(controls)
