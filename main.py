@@ -9,28 +9,28 @@ from pyrogram.types import InlineQueryResultArticle, InputTextMessageContent, \
     InlineKeyboardMarkup, InlineKeyboardButton
 from vkaudiotoken import get_kate_token, get_vk_official_token
 
-# import config as conf  # custom configurations
+import config as conf  # custom configurations
 from pyrogram_audio import InlineQueryResultAudio
 
-# api_id = conf.API_ID
-# api_hash = conf.API_HASH
-# bot_token = conf.BOT_TOKEN
-# phone_number = conf.PHONE_NUMBER
-# login = login
-# password = password
-# USERS_DATABASE_CHANNEL_ID = conf.USERS_DATABASE_CHANNEL_ID
-# YT_MUSIC_DATABASE_CHANNEL_ID = conf.YT_MUSIC_DATABASE_CHANNEL_ID
-# KEK_MUSIC_DATABASE_CHANNEL_ID = conf.KEK_MUSIC_DATABASE_CHANNEL_ID
+api_id = conf.API_ID
+api_hash = conf.API_HASH
+bot_token = conf.BOT_TOKEN
+phone_number = conf.PHONE_NUMBER
+login = conf.LOGIN
+password = conf.PASSWORD
+USERS_DATABASE_CHANNEL_ID = conf.USERS_DATABASE_CHANNEL_ID
+YT_MUSIC_DATABASE_CHANNEL_ID = conf.YT_MUSIC_DATABASE_CHANNEL_ID
+KEK_MUSIC_DATABASE_CHANNEL_ID = conf.KEK_MUSIC_DATABASE_CHANNEL_ID
 
-api_id = int(environ["API_ID"])
-api_hash = environ["API_HASH"]
-bot_token = environ["BOT_TOKEN"]
-phone_number = environ["PHONE_NUMBER"]
-login = environ["LOGIN"]
-password = environ["PASSWORD"]
-USERS_DATABASE_CHANNEL_ID = int(environ["USERS_DATABASE_CHANNEL_ID"])
-YT_MUSIC_DATABASE_CHANNEL_ID = int(environ["YT_MUSIC_DATABASE_CHANNEL_ID"])
-KEK_MUSIC_DATABASE_CHANNEL_ID = int(environ["KEK_MUSIC_DATABASE_CHANNEL_ID"])
+# api_id = int(environ["API_ID"])
+# api_hash = environ["API_HASH"]
+# bot_token = environ["BOT_TOKEN"]
+# phone_number = environ["PHONE_NUMBER"]
+# login = environ["LOGIN"]
+# password = environ["PASSWORD"]
+# USERS_DATABASE_CHANNEL_ID = int(environ["USERS_DATABASE_CHANNEL_ID"])
+# YT_MUSIC_DATABASE_CHANNEL_ID = int(environ["YT_MUSIC_DATABASE_CHANNEL_ID"])
+# KEK_MUSIC_DATABASE_CHANNEL_ID = int(environ["KEK_MUSIC_DATABASE_CHANNEL_ID"])
 
 pages_dict = {}
 
