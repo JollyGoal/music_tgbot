@@ -1,7 +1,7 @@
 import datetime
 import re
 from time import time
-from os import environ
+# from os import environ
 
 import requests
 from pyrogram import Client, filters
@@ -330,11 +330,15 @@ async def handle_admins_messages(client, message):
 async def welcome(client, message):
     await save_user_in_db(message.from_user)
     if message.text.lower() == "/start":
-        await message.reply_text(f'Hello {message.from_user.first_name}!'
-                                 f' I can find any music you want\nJust send me the search query')
+        await message.reply_text(f'Привет, {message.from_user.first_name}! '
+                                 f'Я - быстрейший из всех ботов по поиску музыки, тебе лишь нужно '
+                                 f'отправить мне название песни, или имя исполнителя 😉')
     else:
-        await message.reply_text("Send me a search query, or mention me in any chat you want,"
-                                 " in the following form: @salvatoremuzbot Artist name - Song title")
+        await message.reply_text("Отправь мне название песни, или имя исполнителя.\n"
+                                 "Можешь также отправить мне ссылку на видео на YouTube и Я скачаю аудио для тебя))    "
+                                 "[Скоро 🕔]\n"
+                                 "А если впишешь в чат @salvatoremuzbot , то сможешь искать, слушать и отправлять "
+                                 "музыку кому угодно и в любом чате: друзьям, группам и даже мне 🙃     [Скоро 🕔]\n")
 
 
 @bot.on_callback_query()
@@ -343,7 +347,7 @@ async def answer(client, callback_query):
         if callback_query.data == "PREV_PAGE":
             try:
                 if pages_dict[callback_query.message.chat.id] - 1 <= 0:
-                    await callback_query.answer("⛔ No way back")
+                    await callback_query.answer("⛔ Назад нельзя")
                     return
                 else:
                     pages_dict[callback_query.message.chat.id] -= 1
@@ -357,7 +361,7 @@ async def answer(client, callback_query):
         elif callback_query.data == "NEXT_PAGE":
             try:
                 if len(callback_query.message.reply_markup.inline_keyboard) != ELEMENTS_PER_PAGE + 1:
-                    await callback_query.answer("⛔ No way further")
+                    await callback_query.answer("⛔ Вперёд не пройти")
                     return
                 else:
                     pages_dict[callback_query.message.chat.id] += 1
@@ -368,7 +372,7 @@ async def answer(client, callback_query):
                                       page=pages_dict[callback_query.message.chat.id])
             if len(audios) == 0:
                 pages_dict[callback_query.message.chat.id] -= 1
-                await callback_query.answer("⛔ No way further")
+                await callback_query.answer("⛔ Вперёд не пройти")
             else:
                 await callback_query.message.edit_reply_markup(audios_markup(audios,
                                                                              pages_dict[
@@ -388,15 +392,15 @@ async def answer(client, callback_query):
                                               "[𝑺𝒂𝒍𝒗𝒂𝒕𝒐𝒓𝒆𝑴𝒖𝒛](https://t.me/salvatoremuzbot)🥀")
             await callback_query.answer()
         else:
-            await callback_query.answer("⛔ Something went wrong")
+            await callback_query.answer("⛔ Что-то пошло не так")
     except Exception as e:
         print(e)
-        await callback_query.answer("⛔ Something went wrong")
+        await callback_query.answer("⛔ Что-то пошло не так")
 
 
 @bot.on_message(filters.text & ~filters.channel)
 async def echo(client, message):
-    search_message = await client.send_message(message.chat.id, "Searching...")
+    search_message = await client.send_message(message.chat.id, "Ишу...")
     try:
         audios = await find_audio(message.text, YT_MUSIC_DATABASE_CHANNEL_ID)
         if len(audios) == 0:
@@ -404,10 +408,10 @@ async def echo(client, message):
         pages_dict[message.chat.id] = 1
         await message.reply_text(message.text, reply_markup=audios_markup(audios, pages_dict[message.chat.id]))
     except EmptyResponse:
-        await message.reply_text("Please send valid query")
+        await message.reply_text("Пожалуйста, отправь мне запрос, который Я смогу понять 🥺")
     except Exception as e:
         print("Something went wrong:", e)
-        await message.reply_text("Something went wrong, please try again later")
+        await message.reply_text("Что-то полшо не по плану 🤯, попробуй позже, пожалуйста")
     await search_message.delete()
     # await bot.delete_messages(message.chat.id, search_message.message_id)
 
@@ -417,11 +421,11 @@ def audios_markup(audios, curr_page):
     for audio in audios:
         elem_title = f"{audio.audio.title} - {audio.audio.performer}"
         try:
-            time = str(datetime.timedelta(seconds=audio.audio.duration))
-            if time.startswith("0:"):
-                elem_title += f" | {time[2:]}"
+            dur = str(datetime.timedelta(seconds=audio.audio.duration))
+            if dur.startswith("0:"):
+                elem_title += f" | {dur[2:]}"
             else:
-                elem_title += f" | {time}"
+                elem_title += f" | {dur}"
         except Exception as e:
             print(e)
         keyboard.append([InlineKeyboardButton(text=elem_title, callback_data=str(audio.message_id))])
