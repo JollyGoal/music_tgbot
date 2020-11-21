@@ -6,7 +6,7 @@ from time import time
 import requests
 from pyrogram import Client, filters
 from pyrogram.types import InlineQueryResultArticle, InputTextMessageContent, \
-    InlineKeyboardMarkup, InlineKeyboardButton
+    InlineKeyboardMarkup, InlineKeyboardButton, ReplyKeyboardMarkup, ForceReply
 from vkaudiotoken import get_kate_token, get_vk_official_token
 
 import config as conf  # custom configurations
@@ -21,6 +21,7 @@ password = conf.PASSWORD
 USERS_DATABASE_CHANNEL_ID = conf.USERS_DATABASE_CHANNEL_ID
 YT_MUSIC_DATABASE_CHANNEL_ID = conf.YT_MUSIC_DATABASE_CHANNEL_ID
 KEK_MUSIC_DATABASE_CHANNEL_ID = conf.KEK_MUSIC_DATABASE_CHANNEL_ID
+ADMINS_IDS = conf.ADMINS_IDS
 
 # api_id = int(environ["API_ID"])
 # api_hash = environ["API_HASH"]
@@ -33,9 +34,9 @@ KEK_MUSIC_DATABASE_CHANNEL_ID = conf.KEK_MUSIC_DATABASE_CHANNEL_ID
 # KEK_MUSIC_DATABASE_CHANNEL_ID = int(environ["KEK_MUSIC_DATABASE_CHANNEL_ID"])
 
 pages_dict = {}
+# show_add_dict = {}
 
 ELEMENTS_PER_PAGE = 8
-ADMINS_IDS = [174530324, 33908550]
 
 app = Client("app", api_id, api_hash, phone_number=phone_number)
 bot = Client("bot", api_id, api_hash, bot_token=bot_token)
@@ -55,6 +56,23 @@ async def find_audio(query, chat_id, page=1, limit=ELEMENTS_PER_PAGE):
                                              offset=page * limit):
         messages.append(message)
     return messages
+
+
+async def get_latest(page=1, limit=ELEMENTS_PER_PAGE):
+    page = page - 1
+    messages = []
+    async for message in app.iter_history(YT_MUSIC_DATABASE_CHANNEL_ID, limit=limit, offset=page * limit):
+        messages.append(message)
+    return messages
+
+
+async def get_kek_muz_latest(limit=ELEMENTS_PER_PAGE):
+    message_ids = []
+    async for message in app.iter_history(KEK_MUSIC_DATABASE_CHANNEL_ID, limit=limit):
+        if message.message_id not in message_ids:
+            message_ids.append(message.message_id)
+
+    return message_ids
 
 
 def search_vk_audio(query: str, page=1, limit=ELEMENTS_PER_PAGE, performer_only: int = 0):
@@ -103,7 +121,7 @@ def search_vk_audio(query: str, page=1, limit=ELEMENTS_PER_PAGE, performer_only:
                 ('count', limit)
             ]
         )
-    js = result.json()
+    # js = result.json()
     return result.json()['response']
 
 
@@ -135,7 +153,7 @@ async def forward_audio(message_ids, chat_id, from_chat_id):
         chat_id=chat_id,
         from_chat_id=from_chat_id,
         message_ids=message_ids,
-        as_copy=False,
+        as_copy=True,
     )
     return msg
 
@@ -152,11 +170,29 @@ async def save_user_in_db(user):
     msg = f"ID: {user.id}\nIs bot?: {user.is_bot}\nFirst name: {user.first_name}" \
           f"\nLast name: {user.last_name}\nUsername: @{user.username}\nIs active: True"
     if len(users_data) == 0:
-        await bot.send_message(USERS_DATABASE_CHANNEL_ID, msg)
+        async for message in app.iter_history(USERS_DATABASE_CHANNEL_ID, reverse=False):
+            if time() - message.date >= 2600:
+                break
+            try:
+                if message.text.startswith(f"ID: {user.id}"):
+                    users_data.append(message)
+            except Exception as e:
+                print(e)
+        if len(users_data) == 0:
+            await bot.send_message(USERS_DATABASE_CHANNEL_ID, msg)
+        elif len(users_data) == 1:
+            try:
+                await users_data[0].edit_text(msg)
+            except Exception as e:
+                print(e)
+                pass
+        else:
+            for single_user_data in users_data:
+                await single_user_data.delete()
+            await bot.send_message(USERS_DATABASE_CHANNEL_ID, msg)
     elif len(users_data) == 1:
         try:
             await users_data[0].edit_text(msg)
-
         except Exception as e:
             print(e)
             pass
@@ -189,7 +225,6 @@ async def answer(client, inline_query):
         results = []
         for audio in audios:
             try:
-                print(audio['url'])
                 url = _pattern.sub(r'\1\2.mp3', audio['url'])
                 results.append(
                     InlineQueryResultAudio(
@@ -211,7 +246,7 @@ async def answer(client, inline_query):
     except EmptyResponse:
         results = [
             InlineQueryResultArticle(
-                title="Nothing found. Please type music artist name and music title",
+                title="Пожалуйста, напиши запрос, который Я смогу понять 🥺",
                 input_message_content=InputTextMessageContent("/help"),
             )
         ]
@@ -223,7 +258,7 @@ async def answer(client, inline_query):
         print(e)
         results = [
             InlineQueryResultArticle(
-                title="Please type music artist name and music title",
+                title="Впиши название песни, или артиста 🎶",
                 input_message_content=InputTextMessageContent("/help"),
             )
         ]
@@ -246,7 +281,7 @@ async def answer(client, inline_query):
         #         print(e)
         await inline_query.answer(
             results=results,
-            cache_time=1,  # TODO
+            # cache_time=1,  # TODO
         )
 
 
@@ -277,7 +312,7 @@ async def get_all_users_count():
     msg = f"Active: {active_users + active_groups} ({active_users}👤 {active_groups}👥)\n" \
           f"Inactive: {inactive_users + inactive_groups} ({inactive_users}👤 {inactive_groups}👥)\n" \
           f"Total: {users_count + groups_count} ({users_count}👤 {groups_count}👥)\n" \
-          f"👤 - users\n👥 - group chats\n"
+          f"👤 - users\n👥 - group chats(Work in Progress)\n"
     return msg
 
 
@@ -316,7 +351,8 @@ async def get_today_new_users():
 
 
 @bot.on_message(
-    filters.command(commands=["today_new_users", "send_ad", "all_users_count"]) & filters.chat(chats=ADMINS_IDS))
+    filters.command(commands=["today_new_users", "send_ad", "all_users_count", "check_add", "cancel_ad", "a_c"])
+    & filters.chat(chats=ADMINS_IDS))
 async def handle_admins_messages(client, message):
     if message.text.lower() == "/all_users_count":
         stats = await get_all_users_count()
@@ -324,6 +360,32 @@ async def handle_admins_messages(client, message):
     elif message.text.lower() == "/today_new_users":
         stats = await get_today_new_users()
         await message.reply_text(stats)
+    # elif message.text.lower() == "/send_ad":
+    #     await message.reply_text("Отправь мне свой пост. Для отмены - /cancel_ad:",
+    #                              reply_markup=ReplyKeyboardMarkup([["/cancel_ad"]], resize_keyboard=True))
+    #
+    # elif message.text.lower() == "/check_add":
+    #     try:
+    #         rss_post = show_add_dict[message.chat.id]
+    #         await bot.forward_messages(message_ids=rss_post, chat_id=message.chat.id, from_chat_id=message.chat.id,
+    #                                    as_copy=True)
+    #     except Exception as e:
+    #         print(e)
+    #         await message.reply_text("Произошла ошибк! Возможно, сохранённый пост не найден")
+    # elif message.text.lower() == "/cancel_ad":
+
+    elif message.text.lower() == "/a_c":
+        await message.reply_text("/today_new_users\n/send_ad\n/all_users_count\n/check_add\n/cancel_ad\n/a_c")
+
+
+# @bot.on_message(filters.chat(chats=ADMINS_IDS) & filters.reply)
+# async def handle_admin_stepper(client, message):
+#     if message.reply_to_message.text == "Отправь мне свой пост. Для отмены - /cancel_ad:":
+#         show_add_dict[message.chat.id] = message.message_id
+#         await message.reply_text("Пост сохранён! Чтобы проверить и отправить пост:\n/check_add",
+#                                  reply_to_message_id=message.message_id)
+#     else:
+#         await message.reply_text("Что-то пошло не так, попробуй снова")
 
 
 @bot.on_message(filters.command(commands=["start", "help"]))
@@ -332,13 +394,15 @@ async def welcome(client, message):
     if message.text.lower() == "/start":
         await message.reply_text(f'Привет, {message.from_user.first_name}! '
                                  f'Я - быстрейший из всех ботов по поиску музыки, тебе лишь нужно '
-                                 f'отправить мне название песни, или имя исполнителя 😉')
+                                 f'отправить мне название песни, или имя исполнителя 😉', reply_markup=main_markup(),
+                                 reply_to_message_id=message.message_id)
     else:
-        await message.reply_text("Отправь мне название песни, или имя исполнителя.\n"
+        await message.reply_text("Отправь мне название песни, или имя исполнителя.\n\n"
                                  "Можешь также отправить мне ссылку на видео на YouTube и Я скачаю аудио для тебя))    "
-                                 "[Скоро 🕔]\n"
+                                 "[Скоро 🕔]\n\n"
                                  "А если впишешь в чат @salvatoremuzbot , то сможешь искать, слушать и отправлять "
-                                 "музыку кому угодно и в любом чате: друзьям, группам и даже мне 🙃     [Скоро 🕔]\n")
+                                 "музыку кому угодно и в любом чате: друзьям, группам и даже мне 🙃     [WIP 🕔]\n",
+                                 reply_markup=main_markup(), reply_to_message_id=message.message_id)
 
 
 @bot.on_callback_query()
@@ -377,8 +441,6 @@ async def answer(client, callback_query):
                 await callback_query.message.edit_reply_markup(audios_markup(audios,
                                                                              pages_dict[
                                                                                  callback_query.message.chat.id]))
-        elif callback_query.data == "PAGES":
-            await callback_query.answer()
         elif callback_query.data.isdigit():
             msg = await forward_audio(int(callback_query.data), KEK_MUSIC_DATABASE_CHANNEL_ID,
                                       YT_MUSIC_DATABASE_CHANNEL_ID)
@@ -391,6 +453,43 @@ async def answer(client, callback_query):
             await client.edit_message_caption(final_msg.chat.id, final_msg.message_id,
                                               "[𝑺𝒂𝒍𝒗𝒂𝒕𝒐𝒓𝒆𝑴𝒖𝒛](https://t.me/salvatoremuzbot)🥀")
             await callback_query.answer()
+        elif callback_query.data == "PREV_LATEST":
+            try:
+                if pages_dict[callback_query.message.chat.id] - 1 <= 0:
+                    await callback_query.answer("⛔ Назад нельзя")
+                    return
+                else:
+                    pages_dict[callback_query.message.chat.id] -= 1
+            except Exception as e:
+                print(e)
+                pages_dict[callback_query.message.chat.id] = 1
+            audios = await get_latest(page=pages_dict[callback_query.message.chat.id])
+            await callback_query.message.edit_reply_markup(audios_markup(audios,
+                                                                         pages_dict[callback_query.message.chat.id],
+                                                                         callback_prev="PREV_LATEST",
+                                                                         callback_next="NEXT_LATEST"))
+        elif callback_query.data == "NEXT_LATEST":
+            try:
+                if len(callback_query.message.reply_markup.inline_keyboard) != ELEMENTS_PER_PAGE + 1:
+                    await callback_query.answer("⛔ Вперёд не пройти")
+                    return
+                else:
+                    pages_dict[callback_query.message.chat.id] += 1
+            except Exception as e:
+                print(e)
+                pages_dict[callback_query.message.chat.id] = 1
+            audios = await get_latest(page=pages_dict[callback_query.message.chat.id])
+            if len(audios) == 0:
+                pages_dict[callback_query.message.chat.id] -= 1
+                await callback_query.answer("⛔ Вперёд не пройти")
+            else:
+                await callback_query.message.edit_reply_markup(audios_markup(audios,
+                                                                             pages_dict[
+                                                                                 callback_query.message.chat.id],
+                                                                             callback_prev="PREV_LATEST",
+                                                                             callback_next="NEXT_LATEST"))
+        elif callback_query.data == "PAGES":
+            await callback_query.answer()
         else:
             await callback_query.answer("⛔ Что-то пошло не так")
     except Exception as e:
@@ -400,23 +499,41 @@ async def answer(client, callback_query):
 
 @bot.on_message(filters.text & ~filters.channel)
 async def echo(client, message):
-    search_message = await client.send_message(message.chat.id, "Ишу...")
-    try:
-        audios = await find_audio(message.text, YT_MUSIC_DATABASE_CHANNEL_ID)
-        if len(audios) == 0:
-            raise EmptyResponse
+    search_message = await client.send_message(message.chat.id, "Ищу...", reply_to_message_id=message.message_id)
+    if message.text == "🔥 Новинки":
+        audios = await get_latest()
         pages_dict[message.chat.id] = 1
-        await message.reply_text(message.text, reply_markup=audios_markup(audios, pages_dict[message.chat.id]))
-    except EmptyResponse:
-        await message.reply_text("Пожалуйста, отправь мне запрос, который Я смогу понять 🥺")
-    except Exception as e:
-        print("Something went wrong:", e)
-        await message.reply_text("Что-то полшо не по плану 🤯, попробуй позже, пожалуйста")
-    await search_message.delete()
-    # await bot.delete_messages(message.chat.id, search_message.message_id)
+        await message.reply_text(message.text, reply_to_message_id=message.message_id,
+                                 reply_markup=audios_markup(audios, pages_dict[message.chat.id],
+                                                            callback_prev="PREV_LATEST",
+                                                            callback_next="NEXT_LATEST"))
+        await search_message.delete()
+    elif message.text == "🔈 Слушают сейчас":
+        audio_ids = await get_kek_muz_latest(limit=10)
+        await client.forward_messages(message_ids=audio_ids,
+                                      chat_id=message.chat.id,
+                                      from_chat_id=KEK_MUSIC_DATABASE_CHANNEL_ID, as_copy=True)
+        await search_message.delete()
+    else:
+        try:
+            audios = await find_audio(message.text, YT_MUSIC_DATABASE_CHANNEL_ID)
+            if len(audios) == 0:
+                raise EmptyResponse
+            pages_dict[message.chat.id] = 1
+            await message.reply_text(message.text, reply_markup=audios_markup(audios, pages_dict[message.chat.id]),
+                                     reply_to_message_id=message.message_id)
+        except EmptyResponse:
+            await message.reply_text("Пожалуйста, отправь мне запрос, который Я смогу понять 🥺",
+                                     reply_to_message_id=message.message_id)
+        except Exception as e:
+            print("Something went wrong:", e)
+            await message.reply_text("Что-то полшо не по плану 🤯, попробуй позже, пожалуйста",
+                                     reply_to_message_id=message.message_id)
+        await search_message.delete()
+        # await bot.delete_messages(message.chat.id, search_message.message_id)
 
 
-def audios_markup(audios, curr_page):
+def audios_markup(audios, curr_page, callback_prev="PREV_PAGE", callback_next="NEXT_PAGE"):
     keyboard = []
     for audio in audios:
         elem_title = f"{audio.audio.title} - {audio.audio.performer}"
@@ -433,17 +550,25 @@ def audios_markup(audios, curr_page):
     if len(audios) == ELEMENTS_PER_PAGE:
         controls = []
         if curr_page != 1:
-            controls.append(InlineKeyboardButton(text="<<", callback_data="PREV_PAGE"))
+            controls.append(InlineKeyboardButton(text="<<", callback_data=callback_prev))
         controls += [InlineKeyboardButton(text=f"{curr_page}", callback_data="PAGES"),
-                     InlineKeyboardButton(text=">>", callback_data="NEXT_PAGE"), ]
+                     InlineKeyboardButton(text=">>", callback_data=callback_next), ]
         keyboard.append(controls)
     elif len(audios) != ELEMENTS_PER_PAGE and curr_page != 1:
-        controls = [InlineKeyboardButton(text="<<", callback_data="PREV_PAGE"),
+        controls = [InlineKeyboardButton(text="<<", callback_data=callback_prev),
                     InlineKeyboardButton(text=f"{curr_page}", callback_data="PAGES")]
         keyboard.append(controls)
 
     markup = InlineKeyboardMarkup(inline_keyboard=keyboard)
     return markup
+
+
+def main_markup():
+    reply_markup = ReplyKeyboardMarkup(
+        [
+            ["🔥 Новинки", "🔈 Слушают сейчас"],
+        ], resize_keyboard=True)
+    return reply_markup
 
 
 if __name__ == '__main__':

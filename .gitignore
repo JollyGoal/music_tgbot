@@ -2,7 +2,7 @@
 /config.py
 /vk_config.v2.json
 /cache/
-#*.session
+*.session
 *.session-journal
 
 # Project exclude paths
