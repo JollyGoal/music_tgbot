@@ -514,9 +514,9 @@ async def echo(client, message):
         await search_message.delete()
     elif message.text == "🔈 Слушают сейчас":
         audio_ids = await get_kek_muz_latest(limit=8)
-        test = await client.forward_messages(message_ids=audio_ids,
-                                             chat_id=message.chat.id,
-                                             from_chat_id=KEK_MUSIC_DATABASE_CHANNEL_ID, as_copy=False)
+        await client.forward_messages(message_ids=audio_ids,
+                                      chat_id=message.chat.id,
+                                      from_chat_id=KEK_MUSIC_DATABASE_CHANNEL_ID, as_copy=False)
         await search_message.delete()
     else:
         try:
