@@ -68,9 +68,13 @@ async def get_latest(page=1, limit=ELEMENTS_PER_PAGE):
 
 async def get_kek_muz_latest(limit=ELEMENTS_PER_PAGE):
     message_ids = []
-    async for message in app.iter_history(KEK_MUSIC_DATABASE_CHANNEL_ID, limit=limit):
+    count = 0
+    async for message in app.iter_history(KEK_MUSIC_DATABASE_CHANNEL_ID):
         if message.message_id not in message_ids:
             message_ids.append(message.message_id)
+            count += 1
+        if count >= limit:
+            break
 
     return message_ids
 
@@ -509,10 +513,10 @@ async def echo(client, message):
                                                             callback_next="NEXT_LATEST"))
         await search_message.delete()
     elif message.text == "🔈 Слушают сейчас":
-        audio_ids = await get_kek_muz_latest(limit=10)
-        await client.forward_messages(message_ids=audio_ids,
-                                      chat_id=message.chat.id,
-                                      from_chat_id=KEK_MUSIC_DATABASE_CHANNEL_ID, as_copy=True)
+        audio_ids = await get_kek_muz_latest(limit=8)
+        test = await client.forward_messages(message_ids=audio_ids,
+                                             chat_id=message.chat.id,
+                                             from_chat_id=KEK_MUSIC_DATABASE_CHANNEL_ID, as_copy=False)
         await search_message.delete()
     else:
         try:
